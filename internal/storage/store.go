@@ -89,17 +89,10 @@ func normalizeSnapshot(value domain.Snapshot) (domain.Snapshot, error) {
 	if err := validateIndexes(value); err != nil {
 		return domain.Snapshot{}, err
 	}
-	for _, run := range value.Runs {
-		if run.State != domain.RunCompleted && run.State != domain.RunAborted {
-			continue
-		}
-		for name, amount := range run.Consumed {
-			if amount <= 0 {
-				continue
-			}
-			value.Stock[name] = value.Stock[name] + amount
-		}
-	}
+	// Stock is persisted as the source of truth: ingredients are deducted once
+	// when a run starts and returned only when a run is aborted. The amounts on
+	// each run record that deduction, so recovery must not recompute stock from
+	// them (doing so would return ingredients a second time after a restart).
 	return value, nil
 }
 

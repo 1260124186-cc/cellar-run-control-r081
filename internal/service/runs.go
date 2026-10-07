@@ -125,7 +125,7 @@ func (s *Service) StartRun(
 			return domain.NewError(domain.CodeFormulaNotFound, "attached formula was not found")
 		}
 		required := formula.RequiredIngredients(run.PlannedVolumeL)
-		if err := reserveIngredients(snapshot, required); err != nil {
+		if err := consumeIngredients(snapshot, required); err != nil {
 			return err
 		}
 		if err := vessel.StartRun(run.ID, s.clock.Now()); err != nil {
@@ -228,22 +228,22 @@ func (s *Service) ListRuns() ([]domain.FermentationRun, error) {
 	return runs, nil
 }
 
-func reserveIngredients(snapshot *domain.Snapshot, required map[string]float64) error {
+// consumeIngredients verifies that every required ingredient has enough stock
+// and only then deducts the full requirement once. Availability is checked for
+// each ingredient independently (a surplus of one ingredient never covers a
+// shortage of another), so stock can never go negative through a start.
+func consumeIngredients(snapshot *domain.Snapshot, required map[string]float64) error {
 	if len(required) == 0 {
 		return nil
 	}
 	if snapshot.Stock == nil {
 		snapshot.Stock = make(map[string]float64, len(required))
 	}
-	totalAvailable := 0.0
-	totalRequired := 0.0
 	for name, amount := range required {
-		totalAvailable += snapshot.Stock[name]
-		totalRequired += amount
-	}
-	if totalRequired > totalAvailable {
-		return domain.FieldError(domain.CodeInvalidInput, "ingredients",
-			"available stock is insufficient for the planned volume")
+		if amount > snapshot.Stock[name] {
+			return domain.FieldError(domain.CodeInvalidInput, "ingredients",
+				"available stock is insufficient for the planned volume")
+		}
 	}
 	for name, amount := range required {
 		snapshot.Stock[name] = snapshot.Stock[name] - amount
