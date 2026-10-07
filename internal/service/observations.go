@@ -82,7 +82,8 @@ func (s *Service) CompleteRun(
 		if err := run.Complete(formula.TargetOriginalGravity, s.clock.Now()); err != nil {
 			return err
 		}
-		releaseIngredients(snapshot, run.ConsumedIngredientAmounts())
+		// Ingredients are deducted once at fermentation start; a normal
+		// completion consumes them and never returns them to stock.
 		if run.VesselID == nil {
 			return domain.NewError(domain.CodeRunState, "run has no vessel")
 		}

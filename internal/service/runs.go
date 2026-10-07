@@ -235,15 +235,11 @@ func reserveIngredients(snapshot *domain.Snapshot, required map[string]float64) 
 	if snapshot.Stock == nil {
 		snapshot.Stock = make(map[string]float64, len(required))
 	}
-	totalAvailable := 0.0
-	totalRequired := 0.0
 	for name, amount := range required {
-		totalAvailable += snapshot.Stock[name]
-		totalRequired += amount
-	}
-	if totalRequired > totalAvailable {
-		return domain.FieldError(domain.CodeInvalidInput, "ingredients",
-			"available stock is insufficient for the planned volume")
+		if amount > snapshot.Stock[name] {
+			return domain.FieldError(domain.CodeInvalidInput, "ingredients",
+				"available stock is insufficient for the planned volume")
+		}
 	}
 	for name, amount := range required {
 		snapshot.Stock[name] = snapshot.Stock[name] - amount

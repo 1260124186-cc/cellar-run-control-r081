@@ -89,17 +89,10 @@ func normalizeSnapshot(value domain.Snapshot) (domain.Snapshot, error) {
 	if err := validateIndexes(value); err != nil {
 		return domain.Snapshot{}, err
 	}
-	for _, run := range value.Runs {
-		if run.State != domain.RunCompleted && run.State != domain.RunAborted {
-			continue
-		}
-		for name, amount := range run.Consumed {
-			if amount <= 0 {
-				continue
-			}
-			value.Stock[name] = value.Stock[name] + amount
-		}
-	}
+	// Stock and per-run consumed amounts are authoritative in the snapshot:
+	// deduction happens once at fermentation start and return happens once at
+	// abort. Loading must not replay either, so restarts preserve the same
+	// facts that were persisted.
 	return value, nil
 }
 
